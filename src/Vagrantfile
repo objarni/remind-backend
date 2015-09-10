@@ -1,6 +1,11 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+# This Vagranfile produces a VM with heroku-toolbelt ready to go.
+# It opens up port 5000 from inside the guest VM machine, and binds
+# it to port 8080 of the host os.
+
+
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
 # backwards compatibility). Please don't change it unless you know what
@@ -60,19 +65,14 @@ Vagrant.configure(2) do |config|
 
   # PROVISION SCRIPT
   $script = <<-SHELL
-# Package dependencies
+# Heroku toolbelt dependencies
 sudo apt-get install -y python python-pip python-virtualenv
 
 # Heroku toolbelt
 wget -O- https://toolbelt.heroku.com/install-ubuntu.sh | sh
 sudo apt-get install -y heroku-toolbelt
 
-# Remind backend
-cd /home/vagrant/src
-virtualenv venv
-source venv/bin/activate
-pip install -r requirements.txt
-  SHELL
+SHELL
 
 
   # Enable provisioning with a shell script. Additional provisioners such as
