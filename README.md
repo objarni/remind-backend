@@ -8,10 +8,8 @@ This web service implements three operations:
 3. `remove_top(book)`. Remove top item in a book.
 
 The texts are listed in reverse order of add; list text added is
-first item returned.
-
-Remove always removes the first item in a book, i.e. the last
-added text.
+first item returned. Remove always removes the first item in a
+book, i.e. the last added text.
 
 The UI for ReMind is implemented by [remind-frontend](https://github.com/objarni/remind-frontend).
 
