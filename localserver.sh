@@ -2,4 +2,4 @@
 echo
 echo Staring Remind Backend server. Endpoint: http://localhost:5000
 source venv/bin/activate
-python hello.py
+python server.py
