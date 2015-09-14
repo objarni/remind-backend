@@ -1,10 +1,17 @@
 # coding: utf-8
+
+
+# third party
 from flask import Flask, jsonify, make_response
+import redis
+
+# local
+from config import redis_url
 
 app = Flask(__name__)
 app.debug = True
 
-notes = []
+redis = redis.from_url(redis_url)
 
 
 def tmpresponse(o):
@@ -13,23 +20,28 @@ def tmpresponse(o):
     return response
 
 
+count = 0
+
+
 @app.route('/add')
 def add_api():
-    notes.append("test count=" + str(len(notes)))
+    global count
+    count += 1
+    value = "test count=%d" % count
+    redis.lpush('notes', value)
     return tmpresponse('added')
 
 
 @app.route('/remove_top')
 def remove_top_api():
-    notes.pop()
+    redis.lpop('notes')
     return tmpresponse('remove_top')
 
 
 @app.route('/list')
 def list_api():
-    reversed = list(notes)
-    reversed.reverse()
-    json = jsonify(notes=reversed)
+    result = redis.lrange('notes', 0, 100)
+    json = jsonify(notes=result)
     return tmpresponse(json)
 
 
