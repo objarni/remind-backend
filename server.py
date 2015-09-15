@@ -27,9 +27,7 @@ def add_api():
     if request.method == "POST":
         print "In POST block"
         json = request.get_json()
-        print 'json=%s' % json
         note = json["note"]
-        print 'note=%s' % note
         redis.lpush('notes', note)
         return 'added'
     else:
