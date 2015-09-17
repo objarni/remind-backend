@@ -7,6 +7,8 @@ This web service implements three operations:
 2. `list(book)`. List the texts of a book.
 3. `remove_top(book)`. Remove top item in a book.
 
+A book is identified by an email adress, so in practice each text note is associated with an email adress.
+
 The texts are listed in reverse order of add; list text added is
 first item returned. Remove always removes the first item in a
 book, i.e. the last added text.
