@@ -35,8 +35,6 @@ def add_api():
         json = request.get_json()
         note = json["note"]
         email = json["email"]
-        print u"note=" + note
-        print u"email=" + email
         redis.lpush(redis_key_from_email(email), note)
         return 'added'
 
