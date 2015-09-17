@@ -2,6 +2,7 @@
 echo
 echo Starting local redis server...
 redis-server &
-echo Staring Remind Backend server. Endpoint: http://localhost:5000
+sleep 1
+echo Staring Remind Backend server.
 source venv/bin/activate
 python server.py

@@ -20,6 +20,12 @@ redis = redis.from_url(redis_url)
 print "Starting ReMind backend."
 
 
+def redis_key_from_email(email):
+    """Compute redis key from email adress
+    E.g. olof.bjarnason@gmail.com:book"""
+    return '%s:book' % email
+
+
 @app.route('/add', methods=["GET", "POST", "OPTIONS"])
 def add_api():
     print "add called"
@@ -28,24 +34,28 @@ def add_api():
         print "In POST block"
         json = request.get_json()
         note = json["note"]
-        redis.lpush('notes', note)
+        email = json["email"]
+        print u"note=" + note
+        print u"email=" + email
+        redis.lpush(redis_key_from_email(email), note)
         return 'added'
+
     else:
         print "In non-POST block"
         return ''
 
 
-@app.route('/remove_top')
-def remove_top_api():
+@app.route('/remove_top/<email>')
+def remove_top_api(email):
     print "remove top called"
-    redis.lpop('notes')
+    redis.lpop(redis_key_from_email(email))
     return 'remove_top'
 
 
-@app.route('/list')
-def list_api():
+@app.route('/list/<email>')
+def list_api(email):
     print "list called"
-    result = redis.lrange('notes', 0, 100)
+    result = redis.lrange(redis_key_from_email(email), 0, 100)
     json = jsonify(notes=result)
     return json
 
