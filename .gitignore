@@ -2,3 +2,5 @@
 *.pyc
 venv
 .vagrant
+dump.rdb
+redis-*
