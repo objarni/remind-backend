@@ -58,6 +58,14 @@ def list_api(email):
     return json
 
 
+@app.route('/deltestdata')
+def deltestdata_api():
+    print 'deleting test data'
+    key = redis_key_from_email('test@test.com')
+    redis.delete(key)
+    return 'OK'
+
+
 if __name__ == '__main__':
     app.debug = True
     app.run(host='0.0.0.0')
