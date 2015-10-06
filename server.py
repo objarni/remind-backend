@@ -63,8 +63,7 @@ def deltestdata_api():
     print 'deleting test data'
     key = redis_key_from_email('test@test.com')
     redis.delete(key)
-    return 'OK'
-
+    return jsonify({'ip': request.remote_addr}), 200
 
 if __name__ == '__main__':
     app.debug = True
