@@ -29,9 +29,9 @@ def redis_auth_key_from_email(email):
     return '%s:auth' % email
 
 
-# TODO: Use brypt lib instead of builtin hash
+# TODO: Use bcrypt lib instead of builtin hash
 def hashpw(pw):
-    return base64.b64encode(pw)
+    return base64.b64encode(str(hash(pw)))
 
 
 @app.route('/add', methods=["GET", "POST", "OPTIONS"])
@@ -92,9 +92,7 @@ def add_user_api():
         if db_pwhash:
             return jsonify({'account_created': False}), 200
         else:
-            print 'unhashed pw:', json['password']
             user_pwhash = hashpw(json['password'])
-            print 'writing hased pw to db:', user_pwhash
             redis.set(key, user_pwhash)
             return jsonify({'account_created': True}), 200
     else:
@@ -112,11 +110,8 @@ def authenticate_user_api():
         json = request.get_json()
         email = json['email']
         password = json["password"]
-        print 'userpw', password
         user_hashed_pw = hashpw(password)
-        print 'user_hashed_pw,', user_hashed_pw
         db_hashed_pw = redis.get(redis_auth_key_from_email(email))
-        print 'dbpw ', db_hashed_pw, type(db_hashed_pw)
         if user_hashed_pw == db_hashed_pw:
             print "successful login"
             return jsonify({'logged_in': True}), 200
