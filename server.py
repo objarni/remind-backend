@@ -21,6 +21,11 @@ redis = redis.from_url(redis_url)
 print "Starting ReMind backend."
 
 
+#####################
+#   redis helpers   #
+#####################
+
+
 def redis_book_key_from_email(email):
     return '%s:book' % email
 
@@ -29,26 +34,34 @@ def redis_auth_key_from_email(email):
     return '%s:auth' % email
 
 
+###################
+#   P/W hashing   #
+###################
+
 # TODO: Use bcrypt lib instead of builtin hash
 def hashpw(pw):
     return base64.b64encode(str(hash(pw)))
 
 
-@app.route('/add', methods=["GET", "POST", "OPTIONS"])
-def add_api():
-    print "add called"
+##################################
+#   Post request common method   #
+##################################
+
+def handle_postrequest(handle_json):
+    print handle_json.__name__
     print "method=" + repr(request.method)
     if request.method == "POST":
         print "In POST block"
         json = request.get_json()
-        note = json["note"]
-        email = json["email"]
-        redis.lpush(redis_book_key_from_email(email), note)
-        return 'added'
-
+        return handle_json(json)
     else:
         print "In non-POST block"
         return ''
+
+
+################################
+#   list/remove_top/add APIs   #
+################################
 
 
 @app.route('/remove_top/<email>')
@@ -66,6 +79,10 @@ def list_api(email):
     return json
 
 
+#########################
+#   Continous testing   #
+#########################
+
 @app.route('/deltestdata')
 def deltestdata_api():
     print 'deleting test data'
@@ -76,38 +93,28 @@ def deltestdata_api():
     return jsonify({'ip': request.remote_addr}), 200
 
 
-@app.route('/add_user',
-           methods=["GET", "POST", "OPTIONS"])
+@app.route('/add_user', methods=["POST", "OPTIONS"])
 def add_user_api():
-    print "add_user called"
-    print "method=" + repr(request.method)
-    if request.method == "POST":
-        print "In POST block"
-        json = request.get_json()
-        email = json['email']
 
-        # Account already exists?
+    def add_user(json):
+        email = json['email']
         key = redis_auth_key_from_email(email)
         db_pwhash = redis.get(key)
+        # Account already exists?
         if db_pwhash:
             return jsonify({'account_created': False}), 200
         else:
             user_pwhash = hashpw(json['password'])
             redis.set(key, user_pwhash)
             return jsonify({'account_created': True}), 200
-    else:
-        print "In non-POST block"
-        return ''
+
+    return handle_postrequest(add_user)
 
 
-@app.route('/authenticate_user',
-           methods=["GET", "POST", "OPTIONS"])
+@app.route('/authenticate_user', methods=["POST", "OPTIONS"])
 def authenticate_user_api():
-    print "authenticate_user called"
-    print "method=" + repr(request.method)
-    if request.method == "POST":
-        print "In POST block"
-        json = request.get_json()
+
+    def authenticate_user(json):
         email = json['email']
         password = json["password"]
         user_hashed_pw = hashpw(password)
@@ -118,12 +125,9 @@ def authenticate_user_api():
         else:
             print "failed login"
             return jsonify({'logged_in': False}), 200
-    else:
-        print "In non-POST block"
-        return ''
 
-# TODO: the POST APIs could share common method
-# TODO: remove GET method from all POST apis
+    return handle_postrequest(authenticate_user)
+
 
 if __name__ == '__main__':
     app.debug = True
