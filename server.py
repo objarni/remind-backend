@@ -131,7 +131,8 @@ def deltestdata_api():
 #   User accounts and sessions  #
 #################################
 
-SESSION_EXPIRY_SECONDS = 15
+#                        Sec. Mins.Hours.Days.Months
+SESSION_EXPIRY_SECONDS = 60 * 60 * 24 * 30 * 6
 
 
 @app.route('/get_email', methods=["OPTIONS", "POST"])
