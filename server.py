@@ -49,6 +49,14 @@ def hashpw(pw):
     return base64.b64encode(str(hash(pw)))
 
 
+#############################
+#   Safe remote IP lookup   #
+#############################
+
+def get_remote_ip():
+    return request.access_route[0]
+
+
 #####################################
 #   Generic POST request handlers   #
 #####################################
@@ -67,7 +75,8 @@ def authenticated_requesthandler(handler):
     if request.method == "POST":
         json = request.get_json()
         token = json['token']
-        sessionkey = redis_session_key(request.remote_addr, token)
+        ip = get_remote_ip()
+        sessionkey = redis_session_key(ip, token)
         email = redis.get(sessionkey)
         if email:
             return jsonify(handler(email, json)), 200
@@ -124,7 +133,7 @@ def deltestdata_api():
                       redis_auth_key_from_email]:
         print email2key('test@test.com')
         redis.delete(email2key('test@test.com'))
-    return jsonify({'ip': request.remote_addr}), 200
+    return jsonify({'ip': get_remote_ip()}), 200
 
 
 #################################
@@ -178,7 +187,7 @@ def authenticate_user_api():
         if user_hashed_pw == db_hashed_pw:
             print "Successful login, building session."
             token = uuid.uuid1()
-            ip = request.remote_addr
+            ip = get_remote_ip()
             session_key = redis_session_key(ip=ip, token=token)
             redis.set(session_key, email)
             redis.expire(session_key, SESSION_EXPIRY_SECONDS)
