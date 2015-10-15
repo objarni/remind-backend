@@ -138,6 +138,8 @@ SESSION_EXPIRY_SECONDS = 60 * 60 * 24 * 30 * 6
 @app.route('/get_email', methods=["OPTIONS", "POST"])
 def get_email_api():
 
+    print request.access_route
+
     def get_email(email, json):
         return {'email': email}
 
