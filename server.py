@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import base64
+import uuid
 
 # third party
 from flask import Flask, jsonify
@@ -27,11 +28,15 @@ print "Starting ReMind backend."
 
 
 def redis_book_key_from_email(email):
-    return '%s:book' % email
+    return 'book:%s' % email
 
 
 def redis_auth_key_from_email(email):
-    return '%s:auth' % email
+    return 'auth:%s' % email
+
+
+def redis_session_key(ip, token):
+    return "session:%s:%s" % (ip, token)
 
 
 ###################
@@ -60,15 +65,21 @@ def handle_postrequest(handle_json):
 
 
 ################################
-#   list/remove_top/add APIs   #
+#   Note APIs                  #
 ################################
 
+@app.route('/add', methods=["OPTIONS", "POST"])
+def add_api():
 
-@app.route('/remove_top/<email>')
-def remove_top_api(email):
-    print "remove top called"
-    redis.lpop(redis_book_key_from_email(email))
-    return 'remove_top'
+    def add(json):
+        note = json['note']
+        token = json['token']
+        sessionkey = redis_session_key(request.remote_addr, token)
+        email = redis.get(sessionkey)
+        redis.lpush(redis_book_key_from_email(email), note)
+        return 'added'
+
+    return handle_postrequest(add)
 
 
 @app.route('/list/<email>')
@@ -77,6 +88,13 @@ def list_api(email):
     result = redis.lrange(redis_book_key_from_email(email), 0, 100)
     json = jsonify(notes=result)
     return json
+
+
+@app.route('/remove_top/<email>')
+def remove_top_api(email):
+    print "remove top called"
+    redis.lpop(redis_book_key_from_email(email))
+    return 'remove_top'
 
 
 #########################
@@ -91,6 +109,13 @@ def deltestdata_api():
         print email2key('test@test.com')
         redis.delete(email2key('test@test.com'))
     return jsonify({'ip': request.remote_addr}), 200
+
+
+#################################
+#   User accounts and sessions  #
+#################################
+
+SESSION_EXPIRY_SECONDS = 5
 
 
 @app.route('/add_user', methods=["POST", "OPTIONS"])
@@ -121,7 +146,14 @@ def authenticate_user_api():
         db_hashed_pw = redis.get(redis_auth_key_from_email(email))
         if user_hashed_pw == db_hashed_pw:
             print "successful login"
-            return jsonify({'logged_in': True}), 200
+            token = uuid.uuid1()
+            ip = request.remote_addr
+            session_key = redis_session_key(ip=ip, token=token)
+            redis.set(session_key, email)
+            redis.expire(session_key, SESSION_EXPIRY_SECONDS)
+            json = {'logged_in': True,
+                    'token': token}
+            return jsonify(json), 200
         else:
             print "failed login"
             return jsonify({'logged_in': False}), 200
