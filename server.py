@@ -26,6 +26,7 @@ print "Starting ReMind backend."
 #   redis helpers   #
 #####################
 
+# TODO: these are text-only methods. could be moved to separate module.
 
 def redis_book_key_from_email(email):
     return 'book:%s' % email
@@ -48,19 +49,31 @@ def hashpw(pw):
     return base64.b64encode(str(hash(pw)))
 
 
-##################################
-#   Post request common method   #
-##################################
+#####################################
+#   Generic POST request handlers   #
+#####################################
 
-def handle_postrequest(handle_json):
-    print handle_json.__name__
-    print "method=" + repr(request.method)
+def open_requesthandler(handler):
+    print "Unauthorized API: " + handler.__name__
     if request.method == "POST":
-        print "In POST block"
         json = request.get_json()
-        return handle_json(json)
+        return jsonify(handler(json)), 200
     else:
-        print "In non-POST block"
+        return ''
+
+
+def authenticated_requesthandler(handler):
+    print "Authorized API: " + handler.__name__
+    if request.method == "POST":
+        json = request.get_json()
+        token = json['token']
+        sessionkey = redis_session_key(request.remote_addr, token)
+        email = redis.get(sessionkey)
+        if email:
+            return jsonify(handler(email, json)), 200
+        else:
+            return jsonify({'status': 'NOSESSION'}), 200
+    else:
         return ''
 
 
@@ -68,33 +81,36 @@ def handle_postrequest(handle_json):
 #   Note APIs                  #
 ################################
 
+
 @app.route('/add', methods=["OPTIONS", "POST"])
 def add_api():
 
-    def add(json):
+    def add(email, json):
         note = json['note']
-        token = json['token']
-        sessionkey = redis_session_key(request.remote_addr, token)
-        email = redis.get(sessionkey)
         redis.lpush(redis_book_key_from_email(email), note)
-        return 'added'
+        return {'result': 'added'}
 
-    return handle_postrequest(add)
-
-
-@app.route('/list/<email>')
-def list_api(email):
-    print "list called"
-    result = redis.lrange(redis_book_key_from_email(email), 0, 100)
-    json = jsonify(notes=result)
-    return json
+    return authenticated_requesthandler(add)
 
 
-@app.route('/remove_top/<email>')
-def remove_top_api(email):
-    print "remove top called"
-    redis.lpop(redis_book_key_from_email(email))
-    return 'remove_top'
+@app.route('/list', methods=["OPTIONS", "POST"])
+def list_api():
+
+    def list(email, json):
+        result = redis.lrange(redis_book_key_from_email(email), 0, 100)
+        return {'notes': result}
+
+    return authenticated_requesthandler(list)
+
+
+@app.route('/remove_top', methods=["OPTIONS", "POST"])
+def remove_top_api():
+
+    def remove_top(email, json):
+        redis.lpop(redis_book_key_from_email(email))
+        return {'result': 'removed top'}
+
+    return authenticated_requesthandler(remove_top)
 
 
 #########################
@@ -115,7 +131,16 @@ def deltestdata_api():
 #   User accounts and sessions  #
 #################################
 
-SESSION_EXPIRY_SECONDS = 5
+SESSION_EXPIRY_SECONDS = 15
+
+
+@app.route('/get_email', methods=["OPTIONS", "POST"])
+def get_email_api():
+
+    def get_email(email, json):
+        return {'email': email}
+
+    return authenticated_requesthandler(get_email)
 
 
 @app.route('/add_user', methods=["POST", "OPTIONS"])
@@ -123,17 +148,20 @@ def add_user_api():
 
     def add_user(json):
         email = json['email']
+        passw = json['password']
+
         key = redis_auth_key_from_email(email)
         db_pwhash = redis.get(key)
+
         # Account already exists?
         if db_pwhash:
-            return jsonify({'account_created': False}), 200
+            return {'account_created': False}
         else:
-            user_pwhash = hashpw(json['password'])
+            user_pwhash = hashpw(passw)
             redis.set(key, user_pwhash)
-            return jsonify({'account_created': True}), 200
+            return {'account_created': True}
 
-    return handle_postrequest(add_user)
+    return open_requesthandler(add_user)
 
 
 @app.route('/authenticate_user', methods=["POST", "OPTIONS"])
@@ -145,7 +173,7 @@ def authenticate_user_api():
         user_hashed_pw = hashpw(password)
         db_hashed_pw = redis.get(redis_auth_key_from_email(email))
         if user_hashed_pw == db_hashed_pw:
-            print "successful login"
+            print "Successful login, building session."
             token = uuid.uuid1()
             ip = request.remote_addr
             session_key = redis_session_key(ip=ip, token=token)
@@ -153,12 +181,12 @@ def authenticate_user_api():
             redis.expire(session_key, SESSION_EXPIRY_SECONDS)
             json = {'logged_in': True,
                     'token': token}
-            return jsonify(json), 200
+            return json
         else:
-            print "failed login"
-            return jsonify({'logged_in': False}), 200
+            print "Failed login"
+            return {'logged_in': False}
 
-    return handle_postrequest(authenticate_user)
+    return open_requesthandler(authenticate_user)
 
 
 if __name__ == '__main__':
