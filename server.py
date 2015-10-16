@@ -46,7 +46,7 @@ def redis_session_key(ip, token):
 
 # TODO: Use bcrypt lib instead of builtin hash
 def hashpw(pw):
-    return base64.b64encode(str(hash(pw)))
+    return base64.b64encode(str(pw))
 
 
 #############################
