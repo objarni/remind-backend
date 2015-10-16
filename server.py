@@ -184,6 +184,7 @@ def authenticate_user_api():
         password = json["password"]
         user_hashed_pw = hashpw(password)
         db_hashed_pw = redis.get(redis_auth_key_from_email(email))
+        print user_hashed_pw, db_hashed_pw
         if user_hashed_pw == db_hashed_pw:
             print "Successful login, building session."
             token = uuid.uuid1()
